@@ -1,0 +1,115 @@
+---
+title: "Untitled"
+author: "Tushar  Nahar"
+date: "October 4, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+#################################################################################
+## 
+##	These questions are very similar to those in the book
+##	except we use different data set
+##	We will consider weekly returns of  6 stocks starting 2008-03-19,
+##  	 Amazon, 3M, Boeing, Visa, UnitedHealth, Micron Technology
+##
+#################################################################################
+##
+##	Download Data, get weekly returns in "%" called y.dat 
+
+```{r}
+library(xts);
+library(quantmod);
+
+syb = c("AMZN", "MMM", "BA", "V", "UNH","MU");
+y.dat = get(getSymbols(syb[1],from = "2008-03-19"))
+y.dat = weeklyReturn(Ad(y.dat),type = "log")
+for(i in 2:length(syb)){
+	y= get(getSymbols(syb[i], from = "2008-03-19"))
+	y.dat = cbind(y.dat, weeklyReturn(Ad(y), type = "log"))
+}
+y.dat = 100*y.dat # covert to %
+colnames(y.dat) = syb; # assign column names
+head(y.dat,2); tail(y.dat,2);
+
+```
+#################################################################################
+##
+##  Problem 1.
+##	First consider the weights w without constraints, except
+##	they sum up to 1.
+##
+##	a. Find the minimum variance portfolio: its expect return, its risk, weights
+##	b. Find the tangency portfolio: its expect return, its risk, weights
+##	c. Plot the efficient frontier, the tangency portfolio,
+##		the minimum variance portfolio,  location of each stock.
+##		The annual risk-free rate is 3%, convert it to weekly (52 weeks a  year).
+##		Find and plot the efficient portfolios (combing with risk free asset),
+##		This is the line connect risky free portfolio (0, mu.f) and tangency 
+##		portfolio (sd.T, mu.T): lines(c(0,sd.T), c(mu.f, mu.T))
+##	d. Find the efficient porfolio of an allowed risk 2%. Compute its return.  
+##	e. Find the efficient portfolio of a target return 0.45%. Compute its risk.
+##	f. Find the efficient portfolio of a target return 0.8%. Compute its risk. 
+##	You will use solve.QP() which requires R's quadprog package.
+##	Detail information is given in handout. R code examples are given in  
+##			the Book and its website
+##	Evaluate portfolios with returns mu.R = seq(0,1,0.001)
+##	You will find it helpful to assign column names to the weight matrix
+##	set xlim = c(0,8.1) and ylim = c(0,1) for the plot
+##
+#################################################################################'
+(a)
+```{r}
+library(quadprog);
+y.dat.mu = apply(y.dat,2,mean);y.dat.mu
+y.dat.S2 = var(y.dat); y.dat.S2
+N =6;Amat = cbind(rep(1,N))
+bvec = c(1)
+out = solve.QP(Dmat = y.dat.S2, dvec = rep(0,N), Amat = Amat, bvec = bvec, meq =1)
+cat("weights of the portfolio:\n", out$solution,"\n")
+cat("Risk of the portforio is\n", sqrt(2*out$value),"\n")
+y.dat.expectedreturn=t(y.dat.mu)%*%as.vector(out$solution)
+cat("expected return of the portforio is\n", y.dat.expectedreturn,"\n")
+
+```
+(b)
+```{r}
+mu.R = seq(0, 1, 0.001);
+sd.R = c(); wmat = matrix(nrow = length(mu.R), ncol = N);Amat = cbind(y.dat.mu, rep(1,N))
+for(i in 1:length(mu.R)){
+result = solve.QP(Dmat = y.dat.S2, dvec = rep(0,N), Amat=Amat,
+bvec = c(mu.R[i],1), meq = 2);
+sd.R[i] = sqrt(2*result$value)
+wmat[i,] = result$solution
+}
+
+```
+
+```{r}
+mu.f = 3/52
+sharpe = (mu.R - mu.f)/sd.R
+i.T = which.max(sharpe)
+cat("The tangency portfolio:\n expected return = ", mu.R[i.T], " risk =",
+sd.R[i.T], "\n weights:\n"); round(wmat[i.T,],4)
+
+```
+(c)
+```{r}
+i.min=which.min(sd.R)
+w_each=diag(rep(1,N))
+sd_each=diag(y.dat.S2)
+sd_each
+m_each
+m_each=y.dat.mu%*%w_each
+plot(sd.R[mu.R>=mu.R[i.min]],mu.R[mu.R>=mu.R[i.min]],xlim = c(0,8.1),ylim = c(0,1),col="red")
+lines(c(0,sd.R[i.T]), c(mu.f, mu.R[i.T]),col="blue")
+sd.R[mu.R=round(m_each,digits = 3)]
+mu.R[mu.R=round(m_each,digits  = 3)]
+points(sd.R[mu.R==round(m_each,digits = 3)],mu.R[mu.R=round(m_each,digits == 3)])
+```
+

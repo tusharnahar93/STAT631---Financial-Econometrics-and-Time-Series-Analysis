@@ -1,0 +1,347 @@
+---
+title: "Homework3_TusharNahar"
+author: "Tushar  Nahar"
+date: "September 20, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+ 5.19.1
+ Question 1
+```{r}
+library("Ecdat")
+?CPSch3
+data(CPSch3)
+dimnames(CPSch3)[[2]]
+male.earnings = CPSch3[CPSch3[ ,3] == "male", 2]
+sqrt.male.earnings = sqrt(male.earnings)
+log.male.earnings = log(male.earnings)
+par(mfrow = c(2, 2))
+qqnorm(male.earnings ,datax = TRUE, main = "untransformed")
+qqnorm(sqrt.male.earnings, datax = TRUE,
+main = "square-root transformed")
+qqnorm(log.male.earnings, datax = TRUE, main = "log-transformed")
+par(mfrow = c(2, 2))
+boxplot(male.earnings, main = "untransformed")
+boxplot(sqrt.male.earnings, main = "square-root transformed")
+boxplot(log.male.earnings, main = "log-transformed")
+par(mfrow = c(2,2))
+plot(density(male.earnings), main = "untransformed")
+plot(density(sqrt.male.earnings), main = "square-root transformed")
+plot(density(log.male.earnings), main = "log-transformed")
+
+
+
+```
+As seen from the normal probability plots , box plots and the density plots suggest that square -root transformed provides the most symmetric distribution
+```{r}
+sqr.male.earnings = male.earnings^2
+cube.male.earnings = male.earnings^3
+four.male.earnings = male.earnings^ 4
+qqnorm(cube.male.earnings ,datax = TRUE, main = "cube")
+qqnorm(four.male.earnings, datax = TRUE,
+main = "power-4")
+qqnorm(sqr.male.earnings, datax = TRUE, main = "square")
+boxplot(cube.male.earnings, main = "cube")
+boxplot(four.male.earnings, main = "four")
+boxplot(sqr.male.earnings, main = "square")
+plot(density(cube.male.earnings), main = "cube")
+plot(density(four.male.earnings), main = "four")
+plot(density(sqr.male.earnings), main = "square")
+
+```
+Square root transormation still provides the most symmetric distribution.
+
+Question 2
+```{r}
+library("MASS")
+par(mfrow = c(1, 1))
+boxcox(male.earnings ~ 1)
+boxcox(male.earnings ~ 1, lambda = seq(0.3, 0.45, 1 / 100))
+bc = boxcox(male.earnings ~ 1, lambda = seq(0.3, 0.45, by = 1 / 100),
+interp = FALSE)
+ind = (bc$y == max(bc$y))
+ind2 = (bc$y > max(bc$y) - qchisq(0.95, df = 1) / 2)
+bc$x[ind]
+bc$x[ind2]
+```
+(a)ind1 is the index of x where the maximum likelihood estimation of lambda occurs
+ind2 are set of elements from the profile likelihood confidence interval
+
+(b)interp is a parameter through which the user decides whether interpolation is used or not
+
+(c) The MLE of lambda is 0.36
+
+(d) The 95 percent confidence interval of lambda is [0.32,0.40]
+
+(e) The 99 percent confidence interval of lambda is given by the below code
+```{r}
+ind3 = (bc$y > max(bc$y) - qchisq(0.99, df = 1) / 2)
+bc$x[ind3]
+```
+
+The 99 percent confidence interval of lambda is [0.31,0.41]
+
+Question 3
+
+```{r}
+library("fGarch")
+fit = sstdFit(male.earnings, hessian = TRUE)
+names(fit)
+fit$estimate
+```
+The degrees of freedom for the distribution is 21.600055 and xi is 1.651652
+
+Question 4
+
+```{r}
+x=seq(0, 50,by = 1)
+plot(density(male.earnings))
+lines(x,dsstd(x,mean =17.322933,sd =7.492440 ,nu=21.600055 ,xi=1.651652),lty = 3, lwd = 4, col = "blue")
+
+```
+The parametric and non parametric estimators look similar. Yes the skewed t  model provides an adequate fit to male earnings.
+
+Question 5
+
+```{r}
+fit.GED = sgedFit(male.earnings, hessian = TRUE)
+names(fit.GED)
+fit.GED$par
+plot(density(male.earnings))
+lines(x,dsged(x,mean =17.336668,sd =7.500945 ,nu=1.770956 ,xi=1.654997),lty = 3, lwd = 4, col = "blue")
+```
+
+
+```{r}
+
+
+loglik_sstd = function(theta){
+-sum(dsstd(x, mean = theta[1], sd = theta[2], nu = theta[3],
+xi = theta[4],log = T))
+}
+
+AIC_sstd = 2*loglik_sstd(fit$estimate) + 2 * 4
+BIC_sstd = 2*loglik_sstd(fit$estimate) + log(length(male.earnings)) * 4
+loglik_sged = function(theta){
+-sum(dsged(x, mean = theta[1], sd = theta[2], nu = theta[3],
+xi = theta[4],log = T))
+}
+q2=c(17.336668,7.500945,1.770956,1.654997)
+AIC_sged = 2*loglik_sged(q2) + 2 * 4
+BIC_sged = 2*loglik_sged(q2) + log(length(male.earnings)) * 4
+AIC_sstd
+AIC_sged
+BIC_sstd
+BIC_sged
+```
+Based on both AIC and BIC , skewed t distribution model is chosen
+
+7.19.2
+
+Question 6
+```{r}
+data(Garch, package = "Ecdat")
+library("fGarch")
+data(EuStockMarkets)
+Y = diff(log(EuStockMarkets[ ,1])) # DAX
+##### std #####
+loglik_std = function(x) {
+f = -sum(dstd(Y, x[1], x[2], x[3], log = TRUE))
+f}
+start = c(mean(Y), sd(Y), 4)
+fit_std = optim(start, loglik_std, method = "L-BFGS-B",
+lower = c(-0.1, 0.001, 2.1),
+upper = c(0.1, 1, 20), hessian = TRUE)
+cat("MLE =", round(fit_std$par, digits = 5))
+
+minus_logL_std = fit_std$value # minus the log-likelihood
+AIC_std=2* minus_logL_std + 2 * length(fit_std$par)
+
+AIC_std
+```
+The MLE values for mean , standard deviation , degrees of freedom are 0.0007845663 0.0105790014 4.0351450626
+.AIC is  -11960.47
+
+Question 7
+```{r}
+start=c(mean(Y), sd(Y), 3,1)
+fit_new=optim(start,loglik_sstd,method = "L-BFGS-B",
+lower = c(-0.1, 0.001, 2.1),
+upper = c(0.1, 1, 20), hessian = TRUE)
+minus_logL_sstd = fit_new$value # minus the log-likelihood
+AIC_sstd=2* minus_logL_sstd + 2 * length(fit_new$par)
+AIC_sstd
+```
+std t has the lower AIC
+
+95% CI is [-0.01995,02151]
+
+```{r}
+loglik0_std = function(x) {
+f = -sum(dstd(Y, 0, x[1], x[2], log = TRUE))
+f}
+start = c( sd(Y), 4)
+fit0_std = optim(start, loglik0_std, method = "L-BFGS-B",
+lower = c( 0.001, 2.1),
+upper = c( 1, 20), hessian = TRUE)
+LRT = -2*(fit_std$value-fit0_std$value)
+cat("LRT:", LRT, " p-value: ",1-pchisq(LRT,1))
+```
+pvalue is <0.01 therfore the null hypothesis that the mean is 0 is denied 
+
+7.13.1
+
+Question 1
+```{r}
+setwd("C:/Users/tusha/Downloads")
+berndtInvest = read.csv("berndtInvest.csv")
+Berndt = as.matrix(berndtInvest[, 2:5])
+Berndt
+cov(Berndt)
+cor(Berndt)
+w=c(0.5,0.3,0.2,0)
+variance=t(w)%*%cov(Berndt)%*%w
+variance
+```
+The required variance is 0.0044
+
+Question 2
+```{r}
+
+library(MASS) # needed for cov.trob
+library(mnormt) # needed for dmt
+df = seq(2.5, 8, 0.01)
+n = length(df)
+loglik_profile = rep(0, n)
+for(i in 1:n)
+{
+fit = cov.trob(Berndt, nu = df[i])
+mu = as.vector(fit$center)
+sigma = matrix(fit$cov, nrow = 4)
+loglik_profile[i] = sum(log(dmt(Berndt, mean = fit$center,
+S= fit$cov, df = df[i])))
+
+}
+max(loglik_profile)
+loglik_profile[loglik_profile>max(loglik_profile)- qchisq(0.90, df = 1) / 2]
+c(min(loglik_profile[loglik_profile>max(loglik_profile)- qchisq(0.90, df = 1) / 2]),max(loglik_profile[loglik_profile>max(loglik_profile)- qchisq(0.90, df = 1) / 2]))
+
+```
+MLE for v=539.1793
+Interval at 0.9 = [537.8306, 539.1793]
+
+7.13.2
+Question 3
+```{r}
+library(MASS) # need for mvrnorm
+par(mfrow=c(1,4))
+N = 2500
+nu = 3
+set.seed(5640)
+cov=matrix(c(1, 0.8, 0.8, 1), nrow = 2)
+x= mvrnorm(N, mu = c(0, 0), Sigma = cov)
+w = sqrt(nu / rchisq(N, df = nu))
+x=x* cbind(w, w)
+plot(x, main = "(a)")
+set.seed(5640)
+cov=matrix(c(1, 0.8, 0.8, 1),nrow = 2)
+x= mvrnorm(N, mu = c(0, 0), Sigma = cov)
+w1 = sqrt(nu / rchisq(N, df = nu))
+w2 = sqrt(nu / rchisq(N, df = nu))
+x=x* cbind(w1, w2)
+plot(x, main = "(b)")
+set.seed(5640)
+cov=matrix(c(1, 0, 0, 1), nrow = 2)
+x= mvrnorm(N, mu = c(0, 0), Sigma = cov)
+w1 = sqrt(nu / rchisq(N, df = nu))
+w2 = sqrt(nu / rchisq(N, df = nu))
+x=x* cbind(w1, w2)
+plot(x, main = "(c)")
+set.seed(5640)
+cov=matrix(c(1, 0, 0, 1), nrow = 2)
+x= mvrnorm(N, mu = c(0, 0), Sigma = cov)
+w = sqrt(nu / rchisq(N, df = nu))
+x=x* cbind(w, w)
+plot(x, main = "(d)")
+```
+(b) has independent variables because the variables are concentrate in a lines parallel to x1 axis and x2axis  
+
+Question 4
+
+(d) has variables that are correlated but donot have tail dependence because outliers are scattered everywhere , so that outliers of the corresponding x axes are not associate
+
+Question 5
+(a) has tail dpendence because outliers appear to occur together.
+
+
+Question 6
+(a) The distribution of R is univariate distribution
+
+```{r}
+w_multi=c(0.5,0.5)
+mean_multi=c(0.001,0.002)
+variance_multi =matrix(c(0.10,0.03,0.03,0.15),nrow = 2)
+mean_uni=t(w_multi)%*%mean_multi
+variance_uni=t(w_multi)%*%variance_multi%*%w_multi
+randomt=rstd(10000,mean = mean_uni , sd= sqrt(variance_uni),nu=5)
+upperquantile=quantile(randomt,probs = 0.99)
+randomt[randomt>upperquantile]
+
+
+```
+```{r}
+library(quantmod)
+getSymbols("AMZN")
+getSymbols("CVX")
+getSymbols("CSCO")
+getSymbols("GOOG")
+getSymbols("PFE")
+weeklyreturn.five=cbind(as.vector(weeklyReturn(AMZN)),as.vector(weeklyReturn(CVX)),as.vector(weeklyReturn(CSCO)),as.vector(weeklyReturn(GOOG)),as.vector(weeklyReturn(PFE)))
+
+
+library(MASS) # needed for cov.trob
+library(mnormt) # needed for dmt
+df = seq(2.5, 8, 0.01)
+n = length(df)
+loglik_profile = rep(0, n)
+for(i in 1:n)
+{
+fit = cov.trob(weeklyreturn.five, nu = df[i])
+mu = as.vector(fit$center)
+sigma = matrix(fit$cov, nrow = 4)
+loglik_profile[i] = sum(log(dmt(weeklyreturn.five, mean = fit$center,
+S= fit$cov, df = df[i])))
+}
+AIC=-2*max(loglik_profile)+2*4
+BIC=-2*max(loglik_profile)+4*log(length(weeklyreturn.five))
+AIC
+BIC
+
+```
+
+AIC=-12728.26
+BIC=-12704.16
+
+```{r}
+library(sn)
+df = seq(2.5, 8, 0.01)
+n = length(df)
+fit = mst.mple(y=weeklyreturn.five)
+AIC=-2*fit$logL+2*4
+BIC=-2*fit$logL+4*log(length(weeklyreturn.five))
+AIC
+BIC
+```
+AIC=-12730.31
+BIC=-12706.21
+
+```{r}
+dp2cp(fit$dp,"st")
+```
+
+AC's multivariate t is chosen because of the lesser AIC and BIC Values

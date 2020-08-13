@@ -1,0 +1,235 @@
+---
+title: "Homework8_TusharNahar"
+author: "Tushar  Nahar"
+date: "November 9, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(quantmod)
+library(Ecdat)
+source('C:/Users/tusha/Downloads/HW8_functions.R')
+FF_data = read.table("C:/Users/tusha/Downloads/F-F_Research_Data_Factors_daily.txt",header=T,fill =TRUE)
+which(rownames(FF_data) == "20130103")
+n=nrow(FF_data)
+FF_data = FF_data[which(rownames(FF_data) == "20130103"):n,]
+attach(FF_data)
+
+```
+1(a)
+```{r}
+load("C:/Users/tusha/Downloads/HW8.RData")
+Yt = apply(Rt[,1:25],2,function(u) 100*u-RF)
+n=nrow(Yt)
+fit = lm(Yt~Mkt.RF+SMB+HML); sfit = summary(fit);
+R.Sq = c(); for(i in 1:25) R.Sq = c(R.Sq, sfit[[i]]$r.squared)
+R.Sq.ff=R.Sq
+names(R.Sq) = dimnames(Yt)[[2]]
+
+fit$coefficients[2:4,]
+coef.plot(R.Sq,fit$coefficients[-1,] )
+```
+R Squared value is the lowest for Humana Inc ,Viacom and Netflix. It can also be observed that Tech firms and Media firms  generally have a higher R squared value than other Industries and Healthcare and food industries generally has a lower R- Sq.This maybe because tech industries have a greater variance as they are more agressive
+
+In the above plot about 11 stocks have a beta value for market returns greater than 1 which suggest that these 11 stocks are agressive.
+All tech stocks are agressive (8)
+Health Care has only a single agressive asset (1)
+Media firms together have average risk. They have two agressive stocks(2)
+The assets from the food industry are not agressive (0)
+Tech firms generally have a higher beta value for market returns , they have beta values grater than 1.Healthcare and Food Industry has a lower beta value for market returns ,generally lower than 1. While some media firms have a higher market return than 1 and some have lower than 1.This suggests that Tech assets are usually considered aggressive assets and Health care and Food Industry usually are generally not aggressive . Media Industry has stocks which are both aggressive and not agressive.
+
+
+(b)
+```{r}
+N=dim(Yt)[2]
+alpha = sfit[[1]]$coef[1,]
+for(i in 2:N){
+alpha= rbind(alpha, sfit[[i]]$coef[1,])
+}
+dimnames(alpha)[[1]] = syb;
+cat("\nalpha significant at 5%:", syb[(alpha[,4] < 0.05)],"\n");
+alpha[(alpha[,4]< 0.05),]
+```
+Based on the above result with a 95 % confidence interval Netflix.Inc , NVidia Corporation and United Health group incorporated does not follow tge FF3 model because they have a p value lower than 0.5
+Netflix is from the Media Industry ,NVIDIA incorporated is from the tech industry and  United Healthcare is from the Healthcare Industry
+
+(c)
+```{r}
+p=3
+ahat = alpha[,1]; ## alpha-hat
+res = resid(fit); Sig.e = 1/n*t(res)%*%res;
+Ft = FF_data[,1:3]; ## the three factors
+F.bar = apply(Ft,2,mean); F.S2 = cov(Ft) ## sample mean and variance of Ft
+wald = (n-N-p)/N*1/(1+t(F.bar)%*%solve(F.S2)%*%F.bar)*(t(ahat)%*%solve(Sig.e)%*%ahat) ## Wald statistic
+res.0 = resid(lm(Yt~Mkt.RF+SMB+HML-1)) ## resid from restricted model
+Sig.e0 = 1/n*t(res.0)%*%res.0
+lr = (n-N/2-p-1)*(log(det(Sig.e0))-log(det(Sig.e))) ## LRT statistic
+cat("Wald test:\n", paste(c("statistic", "p-value"),
+c(wald, 1-pf(wald, N, n-N-p)), sep = " = "))
+cat("\nLikelihood ratio test:\n", paste(c("statistic", "p-value"),
+c(lr, 1-pchisq(lr, N)), sep = " = "))
+```
+FF3 model holds for all 25 assets based on the WALD test and Likelihood ratio test . The p value for these assets is greater than 0.05 and hence the null hypothesis is true with a 95% confidence interval
+
+(d)
+```{r}
+p=3
+ahat = alpha[1:6,1];## alpha-hat
+res = resid(fit)[,1:6]; Sig.e = 1/n*t(res)%*%res;
+Ft = FF_data[,1:3]; ## the three factors
+F.bar = apply(Ft,2,mean); F.S2 = cov(Ft) ## sample mean and variance of Ft
+wald = (n-6-p)/6*1/(1+t(F.bar)%*%solve(F.S2)%*%F.bar)*(t(ahat)%*%solve(Sig.e)%*%ahat) ## Wald statistic
+res.0 = resid(lm(Yt~Mkt.RF+SMB+HML-1))[,1:6] ## resid from restricted model
+Sig.e0 = 1/n*t(res.0)%*%res.0
+lr = (n-6/2-p-1)*(log(det(Sig.e0))-log(det(Sig.e))) ## LRT statistic
+cat("Wald test:\n", paste(c("statistic", "p-value"),
+c(wald, 1-pf(wald, 6, n-6-p)), sep = " = "))
+cat("\nLikelihood ratio test:\n", paste(c("statistic", "p-value"),
+c(lr, 1-pchisq(lr, 6)), sep = " = "))
+
+```
+FF3 model holds for the food industry at 95 confidence
+```{r}
+p=3
+ahat = alpha[7:11,1]; ## alpha-hat
+res = resid(fit)[,7:11]; Sig.e = 1/n*t(res)%*%res;
+Ft = FF_data[,1:3]; ## the three factors
+F.bar = apply(Ft,2,mean); F.S2 = cov(Ft) ## sample mean and variance of Ft
+wald = (n-5-p)/5*1/(1+t(F.bar)%*%solve(F.S2)%*%F.bar)*(t(ahat)%*%solve(Sig.e)%*%ahat) ## Wald statistic
+res.0 = resid(lm(Yt~Mkt.RF+SMB+HML-1))[,7:11] ## resid from restricted model
+Sig.e0 = 1/n*t(res.0)%*%res.0
+lr = (n-5/2-p-1)*(log(det(Sig.e0))-log(det(Sig.e))) ## LRT statistic
+cat("Wald test:\n", paste(c("statistic", "p-value"),
+c(wald, 1-pf(wald, 5, n-5-p)), sep = " = "))
+cat("Likelihood ratio test:\n", paste(c("statistic", "p-value"),
+c(lr, 1-pchisq(lr, 5)), sep = " = "))
+
+```
+FF3 model holds for the media industry 
+```{r}
+p=3
+ahat = alpha[12:17,1]; ## alpha-hat
+res = resid(fit)[,12:17]; Sig.e = 1/n*t(res)%*%res;
+Ft = FF_data[,1:3]; ## the three factors
+F.bar = apply(Ft,2,mean); F.S2 = cov(Ft) ## sample mean and variance of Ft
+wald = (n-6-p)/6*1/(1+t(F.bar)%*%solve(F.S2)%*%F.bar)*(t(ahat)%*%solve(Sig.e)%*%ahat) ## Wald statistic
+res.0 = resid(lm(Yt~Mkt.RF+SMB+HML-1))[,12:17] ## resid from restricted model
+Sig.e0 = 1/n*t(res.0)%*%res.0
+lr = (n-6/2-p-1)*(log(det(Sig.e0))-log(det(Sig.e))) ## LRT statistic
+cat("Wald test:\n", paste(c("statistic", "p-value"),
+c(wald, 1-pf(wald, 6, n-6-p)), sep = " = "))
+cat("Likelihood ratio test:\n", paste(c("statistic", "p-value"),
+c(lr, 1-pchisq(lr, 6)), sep = " = "))
+
+```
+FF3 model holds for the healthcare industry at 95% confidence.
+```{r}
+p=3
+ahat = alpha[18:25,1]; ## alpha-hat
+res = resid(fit)[,18:25]; Sig.e = 1/n*t(res)%*%res;
+Ft = FF_data[,1:3]; ## the three factors
+F.bar = apply(Ft,2,mean); F.S2 = cov(Ft) ## sample mean and variance of Ft
+wald = (n-8-p)/8*1/(1+t(F.bar)%*%solve(F.S2)%*%F.bar)*(t(ahat)%*%solve(Sig.e)%*%ahat) ## Wald statistic
+res.0 = resid(lm(Yt~Mkt.RF+SMB+HML-1))[,18:25] ## resid from restricted model
+Sig.e0 = 1/n*t(res.0)%*%res.0
+lr = (n-8/2-p-1)*(log(det(Sig.e0))-log(det(Sig.e))) ## LRT statistic
+cat("Wald test:\n", paste(c("statistic", "p-value"),
+c(wald, 1-pf(wald, 8, n-8-p)), sep = " = "))
+cat("Likelihood ratio test:\n", paste(c("statistic", "p-value"),
+c(lr, 1-pchisq(lr, 8)), sep = " = "))
+
+```
+FF3 model doesn't hold for the tech industry for a confidence level of 95%.
+
+
+(e)
+```{r}
+resid.summary(resid(fit))
+```
+This plot suggests that there is a strong covariance between the residuals of assets in the same industry.The covariance of assets across industry is near to zero. This implies that there will be a discrepancy between the calculation done by the sample covariance and variance calculated by the model . 
+
+The number of parameters in sample covariance is (25(26)/2) =325
+the number of parameters in the model covariance is(4*14) =56
+
+2 
+```{r}
+n = dim(Yt)[1]; N = dim(Yt)[2]; p = 3
+Zt = apply(Yt, 2, function(u) u/sd(u)) ## standarize excess returns
+## approximate FM by factor analysis
+fa.p = factanal(Zt, p, scores = "Bartlett", rotation = "none")
+B = t(fa.p$loading)
+B
+var.e.fa = fa.p$uniq
+Zt.mu = apply(Zt,2,function(u) u-mean(u)) ## subtract Zbar from Zt
+Ft.fa = fa.p$scores
+Res.Mat=Zt.mu -Ft.fa%*%B
+R.Sq.fa = diag(t(B)%*%var(Ft.fa)%*%B)
+resid.summary(Res.Mat)
+
+```
+(a) The first factor generally has a positive coefficient and displays the general movement something similar to a market component.The second factor has a negative coefficient for some industries and positive coefficient for other industries and hence must be an industry specific component. Third factor also has a negative or positive coefficient based on the industry and is an Industry Specific component
+
+(b) The coviariance for error for assets in the tech industry(with other tech assets) is nearly zero . Assets in the healthcare industry generally have errors whose covariance are negative with each other.The covariance of error for media stocks with each other is positive .  The assets in the food industry generally show error which have negative covariance with each other except for DANOY and UN. There is a weak correlation between error of diffrent industries which is nearly zero. There seems to be a weak negative correlation between the errors of the media and industry which suggests an interactive component between these assets. A negative correlation of error suggests a competitive market within Industry while a positive correlation suggests a positive interaction affect between assets of the same industry 
+
+
+3
+(a)
+```{r}
+pca = prcomp(Zt.mu)
+```
+```{r}
+plot(pca)
+```
+Based on the scree plot I would choose the first 5 components since they have most of the variance.
+(b)
+```{r}
+p=3
+Op = t(pca$rotation[,1:p])
+var.e.pc = diag(var(Zt.mu)) - diag(t(Op)%*%diag(pca$sdev[1:p]^2)%*%Op)
+Ft.pc = pca$x[,1:p]
+R.Sq.pc = diag(t(Op)%*%var(Ft.pc)%*%Op)
+var.e.pc
+```
+
+(c)
+```{r}
+summary(pca)
+```
+
+(d)
+```{r}
+s.pca=summary(pca)
+attach(data.frame(Ft.pc))
+fit.pc = lm(Zt.mu~PC1+PC2+PC3)
+sfit.pc = summary(fit.pc)
+R.Sq.pc.2 = c()
+for(i in 1:N) R.Sq.pc.2[i] = sfit.pc[[i]]$r.sq
+names(R.Sq.pc) = syb;
+resid.summary(resid(fit.pc))
+fit.pc$coefficients
+```
+The first component with highest weightage has a positive coefficient which is the general direction of the market.The second and third loadings have a positive or negative weight which depends on the industry in which the given asset is present and must be industry related components . 
+(d)
+The covariance of error shows the same pattern which was obtained from the factor analysis model. 
+
+4
+(a)
+```{r}
+RSq.all=rbind(R.Sq.ff,R.Sq.fa,R.Sq.pc)
+RSq.plot(RSq.all)
+```
+
+(b)  From the plot of the R- Square for FF Models , Factor Analysis models and Principle component analysis models we can conclude that both Principal Component Analysis and Factor Analysis models explain the variance in the model better than the FAMA and french models , although the results obtained for Tech stocks are similar.
+Based on the R squared values , It seems that the factorial analysis model performs the best.
+
+We obtained positive coefficient for both the first principal component and one of the FA components which suggest the present of a general movement factor . We obtain two industry specific components whose sign depends on the Industry in which the given asset is present which suggests the presence of two industry specific components.
+
+The covariance of errors obtained from both pca and fa models sugges that there is are interaction terms between assets which are in the same industry. The covariance of errors in between these industries suggest the presence of an interaction term between the assets of the technology and media industry
+
+Both the R-Squared plot and residual plot suggest that Fama and French models is not a good model to explain the variance between the model and provide accurate predictions

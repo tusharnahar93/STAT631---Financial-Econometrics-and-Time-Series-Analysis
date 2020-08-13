@@ -1,0 +1,196 @@
+---
+title: "Homework 6"
+author: "Tushar  Nahar"
+date: "October 10, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+1. Use the weekly returns of 6 stoacks data from the last homework. Please note that they are in %.
+
+(a) Fit a multivariate-t distribution to the data.
+
+(b) Suppose you are going to invest $20,000 on assets. Compute the t-parametric one-week VaR and ES at alpha = 0.05 of the minmum variance portfolio and tangency portfolio.
+
+```{r}
+library(xts);
+library(quantmod);
+syb = c("AMZN", "MMM", "BA", "V", "UNH","MU");
+y.dat = get(getSymbols(syb[1],from = "2008-03-19"))
+y.dat = weeklyReturn(Ad(y.dat),type = "log")
+for(i in 2:length(syb)){
+	y= get(getSymbols(syb[i], from = "2008-03-19"))
+	y.dat = cbind(y.dat, weeklyReturn(Ad(y), type = "log"))
+}
+y.dat = 100*y.dat # covert to %
+colnames(y.dat) = syb; # assign column names
+head(y.dat,2); tail(y.dat,2);
+
+```
+(a)
+```{r}
+library(MASS); library(mnormt)
+nu.seq = seq(4,7,0.001)
+loglik = c()
+for(i in 1:length(nu.seq)){
+out = cov.trob(y.dat, nu = nu.seq[i])
+loglik[i] = sum(dmt(y.dat,mean = out$center, S = out$cov, df = nu.seq[i], log = T))
+}
+nu = nu.seq[which.max(loglik)];fit = cov.trob(y.dat, nu = nu)
+est = list(nu = nu, mean = fit$center, Lambda = fit$cov)
+est
+```
+(b)
+```{r}
+library(quadprog)
+N = 6;
+mu.R = seq(0, 1, 0.001);
+sd.R = c(); wmat = matrix(nrow = length(mu.R), ncol = N)
+Amat=cbind(est$mean, rep(1,N))
+for(i in 1:length(mu.R)){
+result = solve.QP(Dmat = est$Lambda, dvec = rep(0,N), Amat=Amat,
+bvec = c(mu.R[i],1), meq = 2);
+sd.R[i] = sqrt(2*result$value)
+wmat[i,] = result$solution
+}
+i.min = which.min(sd.R)
+w.min=wmat[i.min,]
+cat("Minimum variance portfolio:\n"); round(w.min,4)
+mu.P = t(w.min%*%est$mean)/100;
+lambda.P = sqrt(t(w.min)%*%est$Lambda%*%w.min)/100; nu = est$nu
+cat("Parametric estimates of portfolio:\n",
+paste(c("\t mu.P", "\t lambda.P", "\t nu"),
+round(c(mu.P, lambda.P, nu),4), sep = " = "))
+alpha = 0.05; S = 20000
+q.t = qt(alpha, df = nu); VaR.P = -S*(mu.P + lambda.P*q.t);
+ES.P = S*(-mu.P+lambda.P*dt(q.t,nu)/alpha*(nu+q.t^2)/(nu-1))
+cat("\none-week risk estimates: ",paste(c("VaR","\t ES"),
+round(c(VaR.P,ES.P),4), sep = " = "))
+mu.f = 3/52
+sharpe = (mu.R - mu.f)/sd.R
+i.T = which.max(sharpe)
+cat("\nThe tangency portfolio:\n expected return = ", mu.R[i.T], "\n risk =",
+sd.R[i.T], "\n weights:\n"); round(wmat[i.T,],4)
+w.T=wmat[i.T,]
+mu.P = t(w.T%*%est$mean)/100;
+lambda.P = sqrt(t(w.T)%*%est$Lambda%*%w.T)/100;
+cat("Parametric estimates of portfolio:\n",
+paste(c("\t mu.P", "\t lambda.P", "\t nu"),
+round(c(mu.P, lambda.P, nu),4), sep = " = "))
+alpha = 0.05; S = 20000
+q.t = qt(alpha, df = nu); VaR.P = -S*(mu.P + lambda.P*q.t);
+ES.P = S*(-mu.P+lambda.P*dt(q.t,nu)/alpha*(nu+q.t^2)/(nu-1))
+cat("\none-week risk estimates: ",paste(c(" VaR"," ES"),
+round(c(VaR.P,ES.P),4), sep = " = "))
+```
+
+2. Get the stock quotes of Nike Inc., the ticker symbol is "NKE". Please do not specifying dates, the default is from 2017-01-01 to the current date. Do problem 1 of Exercises 19.12 with the log daily returns of Nike. 
+(a)
+```{r}
+getSymbols("NKE")
+SPrt = dailyReturn(Ad(NKE), type = "log")[-1]
+head(SPrt,1); tail(SPrt,1); cat("Sample size n = ", dim(SPrt)[1])
+alpha = 0.01; q = quantile(SPrt, alpha);S = 1000;
+VaR.np = -S*q; ES.np = -S*mean(SPrt[SPrt < q])
+cat("\nNonparametric estimates:\n ", paste(c("0.01-quantile"," VaR"," ES"),
+round(c(q, VaR.np,ES.np),4), sep = " = "))
+
+```
+(b)
+```{r}
+library(MASS)
+alpha = 0.01; S = 1000;
+fit.norm = fitdistr(SPrt, "normal");
+fit.norm$est
+mu = fit.norm$est["mean"];sigma = fit.norm$est["sd"]
+q.norm = qnorm(alpha, mean = mu ,sd=sigma); VaR.norm = -S*(mu + sigma*q.norm)
+ES.norm = S*(-mu+(sigma*dnorm(q.norm,mean =mu,sd= sigma)/alpha))
+cat("Parametric t estimates:\n ",paste(c("0.01-quantile"," VaR"," ES"),
+round(c(mu + sigma*q.norm, VaR.norm,ES.norm),4), sep = " = "))
+
+```
+(c)
+```{r}
+alpha = 0.01; S = 1000;
+fit.t = fitdistr(SPrt, "t");
+fit.t$est
+mu = fit.t$est["m"];lambda = fit.t$est["s"];nu = fit.t$est["df"];
+q.t = qt(alpha, df = nu); VaR.t = -S*(mu + lambda*q.t)
+ES.t = S*(-mu+lambda*dt(q.t,nu)/alpha*(nu+q.t^2)/(nu-1))
+cat("Parametric t estimates:\n ",paste(c("0.01-quantile"," VaR"," ES"),
+round(c(mu + lambda*q.t, VaR.t,ES.t),4), sep = " = "))
+```
+(d)
+Since the sample size is large and alpha is not too small the non parametric estimate would provide a good estimate for Var and expected shortfall
+
+Estimates of the t distribution are close to the non parametric estimate , this is expected since heavy tailed t distribution models log returns better than the normal distribution .
+
+As seen , normal distribution does not provide a reasonable estimate of var or Expected shortfall
+
+
+
+3. Use the daily returns of Nike for this problem. Find the regression estimate of tail index and compute the semiparametric estimate of the 24-hour VaR and ES. Use bandwidths m = 50, 100, 200 and 300.
+
+Superimposing the least squares line to a scatter plot of x and y.
+
+plot(x,y)
+
+abline(lsfit(x,y)$coef)
+```{r}
+library(stats)
+y.dailyreturns=dailyReturn(Ad(NKE))
+n=length(y.dailyreturns)
+yt = sort(as.numeric(y.dailyreturns)) # sort from smallest to largest
+m = c(50,100,200,300); out = matrix(nrow = 3, ncol = 4)
+dimnames(out)[[1]] = c("corr", "slope","ahat")
+dimnames(out)[[2]] = paste("m", m, sep = " = ")
+for(i in 1:4){
+x = log((1:m[i])/n); y = log(-yt[1:m[i]])
+out[1,i] = cor(x,y)
+out[2,i] = lsfit(x,y)$coef[2] ## ols estimate of slope
+plot(x,y,main =paste("m=",m[i]))
+
+abline(lsfit(x,y)$coef)
+}
+out[3,] = -1/out[2,] ## ahat = -1/slope
+out
+
+a = out["ahat","m = 200"]
+cat("\nRegression estimate for tail index:",a,"\n")
+alpha0 = 0.1; alpha = seq(0.01,0.05,0.01)
+VaR0 = -S*quantile(yt,alpha0)
+cat("Nonparametric estimates: ", paste(c("0.1-quantile","\n VaR(.1)\n"),
+round(c(quantile(yt,alpha0), VaR0), 4), sep = " = "))
+
+VaR = VaR0*(alpha0/alpha)^(1/a); names(VaR) = paste(alpha)
+ES = a/(a-1)*VaR
+cat("\nSemiparametric Risk Estimate for alpha = ", alpha, ":\n");rbind(VaR,ES)
+
+
+```
+m=200 is chosen as the bandwith for calculation 24 hour estimates for Var and ES
+
+4.Repeat Problem 3 with the Hill estimate for the tail index. 
+```{r}
+c = seq(quantile(y.dailyreturns,.01),quantile(y.dailyreturns,.25),by=.0005)
+nc = c(); hill = c()
+for (i in 1:length(c)){
+nc[i] = sum(y.dailyreturns < c[i])
+hill[i] = nc[i]/sum(log(y.dailyreturns[y.dailyreturns< c[i]]/c[i]))
+}
+plot(nc,hill)
+## nc=150-200 shows an almost constant value and hence is chosen as the range to get the hill estimate
+ind = which(nc > 150 & nc < 200); a.hill = mean(hill[ind])
+cat("Hill estimates with nc in (150,200):\n", hill[ind],"\n average:", a.hill,"\n")
+cat("\nThe estimate of tail index using hill estimate:",a.hill,"\n")
+VaR = VaR0*(alpha0/alpha)^(1/a.hill); names(VaR) = paste(alpha)
+ES = a.hill/(a.hill-1)*VaR
+cat("Risk with Hill Estimate for alpha = ", alpha, ":\n");
+rbind(VaR,ES)
+```
+

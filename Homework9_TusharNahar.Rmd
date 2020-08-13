@@ -1,0 +1,179 @@
+---
+title: "Homework9_TusharNahar"
+author: "Tushar  Nahar"
+date: "November 18, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+load("C:/Users/tusha/Downloads/HW9.RData")
+library(quantmod)
+head(TGC,2); tail(TGC,2)
+Yt = ts(TGC,frequency = 4, start = c(1960,1))
+tsp(Yt)
+dYt = diff(Yt) 
+tsp(dYt)
+```
+Problem 1
+```{r}
+library(forecast)
+ggtsdisplay(Yt[,"TB3"])
+ggtsdisplay(Yt[,"GDP"])
+ggtsdisplay(Yt[,"CPI"])
+```
+
+(a)From the time series plot for GDP we can clearly see that the expected value of returns from one time period to a shifted time period is not constant. Therefore the GDP is non stationary. No conclusions can be made for CPI and TB3 based on time series plots ,these series maybe stationary or non stationary. 
+
+The ACF values as seen from the ACF plots are outside the 95 % confidence interval reference bands for all the three series which suggests a non-stationary time series. 
+
+(b)
+```{r}
+library(urca)
+n=nrow(Yt)
+p.max = trunc(12*(n/100)^0.25);cat("Maximum lags for the AIC:\t", p.max)
+DF.TB3.AIC = ur.df(Yt[,"TB3"], type = "drift", lag = p.max, selectlags = "AIC")
+DF.TB3.AIC
+DF.TB3.AIC@cval
+DF.TB3.BIC =ur.df(Yt[,"TB3"], type = "drift", lag = p.max, selectlags = "BIC")
+DF.TB3.BIC
+DF.TB3.BIC@cval
+DF.GDP.AIC=ur.df(Yt[,"GDP"], type = "trend", lag = p.max, selectlags = "AIC")
+DF.GDP.AIC
+DF.GDP.AIC@cval
+DF.GDP.BIC =ur.df(Yt[,"GDP"], type = "trend", lag = p.max, selectlags = "BIC")
+DF.GDP.BIC
+DF.GDP.BIC@cval
+DF.CPI.AIC = ur.df(Yt[,"CPI"], type = "none", lag = p.max, selectlags = "AIC")
+DF.CPI.AIC
+DF.CPI.AIC@cval
+DF.CPI.BIC =ur.df(Yt[,"CPI"], type = "none", lag = p.max, selectlags = "BIC")
+DF.CPI.BIC
+DF.CPI.BIC@cval
+
+```
+At 5 percent critical value we accept that all the three series have are non stationary processes with test statistic greater than critical value. The test values collaborate with the conclusion of the ACF and time series plots
+
+Problem 2
+(a)
+```{r}
+ggtsdisplay(dYt[,"TB3"])
+ggtsdisplay(dYt[,"GDP"])
+ggtsdisplay(dYt[,"CPI"])
+n=nrow(Yt)
+p.max = trunc(12*(n/100)^0.25);cat("Maximum lags for the AIC:\t", p.max)
+DF.TB3.AIC.diff = ur.df(dYt[,"TB3"], type = "none", lag = p.max, selectlags = "AIC")
+DF.TB3.AIC.diff
+DF.TB3.AIC.diff@cval
+DF.TB3.BIC.diff =ur.df(dYt[,"TB3"], type = "none", lag = p.max, selectlags = "BIC")
+DF.TB3.BIC.diff
+DF.TB3.BIC.diff@cval
+DF.GDP.AIC.diff=ur.df(dYt[,"GDP"], type = "drift", lag = p.max, selectlags = "AIC")
+DF.GDP.AIC.diff
+DF.GDP.AIC.diff@cval
+DF.GDP.BIC.diff =ur.df(dYt[,"GDP"], type = "drift", lag = p.max, selectlags = "BIC")
+DF.GDP.BIC.diff
+DF.GDP.BIC.diff@cval
+DF.CPI.AIC.diff = ur.df(dYt[,"CPI"], type = "none", lag = p.max, selectlags = "AIC")
+DF.CPI.AIC.diff
+DF.CPI.AIC.diff@cval
+DF.CPI.BIC.diff =ur.df(dYt[,"CPI"], type = "none", lag = p.max, selectlags = "BIC")
+DF.CPI.BIC.diff
+DF.CPI.BIC.diff@cval
+
+```
+The value of all three test statistic is lesser than the critical value which suggests that the given series are stationary series
+
+(b)All the three series shows autocorelation.TB3 shows a decaying autocorrelation.CPI shows similar autocorrelation for yearly lags. i.e The pattern repeats every year.
+
+Problem 3
+
+```{r}
+TB = Yt[,1]; dTB = dYt[,1];
+boxplot(dTB~cycle(dTB))
+```
+There are no seasonal diffrence observed in the box plots since the box plots are similar to each other and have similar quartile and median values.
+
+
+Problem 4
+
+The ACF and PACF for diffrenced data are similar, both show only few significant lags and they are not strong signals. The plots imply that the orders of p,q are very low. We can set both maximumsof p and q to be 2.
+(b)
+```{r}
+library(forecast)
+auto.arima(TB,d=1, max.P=0, max.Q=0,max.p =3 ,max.q =3 , ic="aic")
+```
+
+The model chosen is Arima (0,1,3)
+
+(c) The goodness of fit criterion chosen here is AIC
+
+(d)
+```{r}
+library(forecast)
+auto.arima(TB,d=1,max.P=0, max.Q=0,max.p =3 ,max.q =3 , ic="bic")
+```
+Yes the best fitting model changes to Arima (2,1,2)
+
+(e)
+???Yt = -0.9004???Y(t???1) -0.7651???Y(t???2) + et + 0.7878e(t???1) + 0.5093e(t???2)
+???Yt=Y(t)-Y(t-1)
+#delta maybe hidden due to encoding
+
+Problem 5
+```{r}
+fit = arima(TB, order=c(2,1,2))
+checkresiduals(fit, test = "LB")
+```
+Ljung -Box Test suggests that residual autocorrelation is not equal to 0 at a 95% confidence. Therefore there is significant autocorelation between the residuals. However none of the signifcant correlation is greater than 0.20 and occurs after 7 quarters , therefore these models maybe satisfactory. A higher order model maybe use to reduce the residual but is not suggested as it may lead to overfitting.The significance of residuals may have occured due to GARCH/ARCH errors.
+
+Problem 6
+
+```{r}
+res2 = (fit$res-mean(fit$res))^2
+Box.test(res2, lag = 12, type="Ljung")
+```
+The correlation between mean centered square residuals is non zero for a 95 percent confidence level.Therefore this correlation is an evidence for the presence of GARCH effects.
+
+Problem 7
+
+```{r}
+fores = forecast(fit, h = 36)
+autoplot(fores)
+```
+(a)As the standard error in arima model is dependent of the values in the time series , they keep increasian and hence the prediction interval keeps increasing .
+
+(b) The diffrence of ARIMA model is a mean stationary process , forecast of the diffrenced tends to a constant value which is zero and hence the prediction remains the same. 
+
+(c)
+```{r}
+predict(fit, n.ahead = 1)
+upper.limit=1.872377+(1.645*0.83912)
+lower.limit=1.872377-(1.645*0.83912)
+cat("(",lower.limit,",",upper.limit,")")
+```
+
+Problem 8
+```{r}
+dfit = arima(diff(TB), order = c(2,0,2), include.mean = F)
+fores = forecast(dfit, h = 36)
+autoplot(fores)
+predict(dfit, n.ahead = 1)
+```
+(a) As the standard error in arma model is independent of the values in the time series , they remain constant and hence the prediction interval remains constant
+
+(b) ARMA models are mean stationary process , therefore over a long run the forecast of ARMA model will tend to the mean
+
+(c)
+```{r}
+upper.limit=-0.01762335+(1.645*0.83912)
+lower.limit=-0.01762335-(1.645*0.83912)
+cat("(",lower.limit,",",upper.limit,")")
+
+```
+

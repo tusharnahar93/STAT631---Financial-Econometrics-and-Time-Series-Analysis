@@ -1,0 +1,144 @@
+---
+title: "Homework7"
+author: "Tushar  Nahar"
+date: "October 29, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r}
+library(xts);
+library(quantmod);
+
+syb = c("ABEV", "HD", "IBM", "JNJ", "MCD", "MU", "PHG", "PII","^GSPC");
+y.dat = get(getSymbols(syb[1],from = "2007-01-01",to="2018-10-20"))
+y.dat = weeklyReturn(Ad(y.dat))
+for(i in 2:length(syb)){
+	y= get(getSymbols(syb[i],from = "2007-01-01",to="2018-10-20"))
+	y.dat = cbind(y.dat, weeklyReturn(Ad(y), type = "log"))
+}
+y.dat = 100*y.dat # covert to %
+colnames(y.dat) = syb; # assign column names
+head(y.dat,2); tail(y.dat,2)
+getSymbols("DGS1MO",src = "FRED")
+T.1Mo = to.weekly(DGS1MO)
+Rf = T.1Mo[time(y.dat),4]/52;
+y.dat = y.dat[time(Rf),]
+n = dim(y.dat)[1]; N = dim(y.dat)[2]-1
+```
+1(a)
+```{r}
+Yt = apply(y.dat[,-(N+1)], 2, function(u) u-as.vector(Rf)) # excess asset returns
+YM = y.dat[,N+1] - Rf # excess market return
+fit = lm(Yt ~ YM)
+
+```
+The following are estimates if beta for all 8 assets
+```{r}
+coef(fit)[2,]
+```
+(b)
+```{r}
+sfit = summary(fit)
+R.Sq = sfit[[1]]$r.sq
+for(i in 2:N){
+R.Sq = c(R.Sq, sfit[[i]]$r.sq)
+}
+names(R.Sq) = c("ABEV", "HD", "IBM", "JNJ", "MCD", "MU", "PHG", "PII")
+```
+The following are the R-Squared values which are proportion of square risk that is due to systemic risk for each asset.
+```{r}
+R.Sq
+```
+2(a) Based on beta estimates the highest returns are exxpected out of the values with the highest beta estimates. Therefore highest returns are expected from Hyatt Micron Technology Inc and Polas Industries Inc . The lowest returns are expected from lowest beta estimates.Therefore the lowest estimates are expected from Johnson and Johnson and McDonald's Company
+```{r}
+apply(Yt,2,mean)
+
+```
+Yes the sample means contradicts the previous two answers.Micron Technologies and Polaris Industries Inc which has a highest beta estimates have lowest return values .The companies with lower estimates of beta McDonalds and JNJ do have lower return values as expected(but not the lowest values)
+
+(b)
+```{r}
+betas=coef(fit)[2,]
+
+```
+The excess returns based on CAPM Values are
+```{r}
+betas * mean(YM)
+```
+```{r}
+apply(Yt,2,mean)
+```
+The estimates are close for ABEV,IBM,MU but are signifcantly diffrent for other stocks
+
+(c)
+The variance- covariance matrix for sample of Yt is
+
+```{r}
+var(Yt)
+```
+(d) The variance-covariance matrix for the CAPM model is 
+```{r}
+res=residuals(fit)
+cov_capm= (betas %*% t(betas)) * mean(YM) + diag(diag(cov(res)))
+cov_capm
+```
+The covariance matrix shows very marginal values(almost 0) when the pair od stocks chosen are diffrent . The values between the sample covariances and variances . The estimates of variance -covariance are slightly better when finding the variance for each stock .
+
+3
+```{r}
+alpha = sfit[[1]]$coef[1,]
+for(i in 2:N){
+alpha= rbind(alpha, sfit[[i]]$coef[1,])
+}
+dimnames(alpha)[[1]] =c("ABEV", "HD", "IBM", "JNJ", "MCD", "MU", "PHG", "PII")
+alpha
+```
+The null hypothesis of the model is that the intercept(alpha) for a linear fit is 0 . The alternated hypothesis of the model is that the intercept has a non zero(alpha) intercept value.
+From the following P values we can see that the alternative hypothesis is true for Ambev S.A and McDonalds Co. This suggest that alpha has a non zero value for a confidence interval of 99 percent.The Alpha value is greater than zero for both Ambev S.A and Mcdonalds which suggests that these stocks are underpriced.
+
+4
+```{r}
+ahat = alpha[,"Estimate"] # alpha_hat
+Sig = 1/n*t(resid(fit))%*%resid(fit) # Sigma_hat
+wald = (n-N-1)/N*(1+mean(YM)^2/var(YM))^(-1)*t(ahat)%*%solve(Sig)%*%ahat
+fit0 = lm(Yt ~ YM -1) # Restricted model, without intercept
+Sig0 = 1/n*t(resid(fit0))%*%resid(fit0) # Sigma0_hat
+lr = (n-N/2-2)*(log(det(Sig0))-log(det(Sig))) # LRT
+cat("Wald test: ", paste(c("statistic", "p-value"),round(c(wald,1-pf(wald, N, n-N-1)),5), sep = " = "))
+cat("\n Likelihood ratio test:", paste(c("statistic", "p-value"),round(c(lr, 1-pchisq(lr, N)),5), sep = " = "))
+```
+Both Wald-test and P test suggest that the not all alpha values are zero even for a 99 percent confidence interval . This is expected since induvidual alpha values(MCD and ABEV) were signifcantly non zero.The type 1 error for both the tests are 0.00412
+
+5(a)
+```{r}
+w=c(rep(0.125,8))
+w
+y.dat.p=y.dat[,-(N+1)]%*%w
+Yt.P = y.dat.p-Rf
+fit.P = lm(Yt.P ~ YM)
+
+
+
+```
+(b)
+```{r}
+betas.P=fit.P$coeff[2]
+expectedreturn=betas.P*mean(YM)
+expectedreturn
+res = residuals(fit.P)
+cov_capm.P=betas.P&betas.P * var(YM) + res
+risk=sqrt(t(w)%*%cov_capm.P%*%w)
+#risk
+```
+
+(c)
+```{r}
+expectedreturn.sample.p=mean(Yt.P)
+expectedreturn.sample.p
+```
+The expected return is not the same as the one obtained from capm model

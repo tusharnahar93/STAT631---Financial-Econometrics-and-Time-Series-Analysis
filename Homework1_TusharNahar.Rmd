@@ -1,0 +1,303 @@
+---
+title: "Homework 1"
+author: "Tushar  Nahar"
+date: "September 4, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## R Markdown
+2.4.1
+
+Problem 1
+```{r}
+dat=read.csv("Stock_FX_Bond.csv", header = TRUE)
+attach(dat)
+n = dim(dat)[1]
+GMReturn = GM_AC[-1] / GM_AC[-n] - 1
+FReturn = F_AC[-1] / F_AC[-n] - 1
+par(mfrow = c(1, 1))
+plot(GMReturn,FReturn)
+```
+The scatterplots suggest that there us a positive correlation between  GM and Ford returns. Higer values of GM return occur with Higher values of Ford returns.There are a number of outlying points whose return values differ signifcantly from the mean values.Outlying GM return seem to occur with outlying ford returns.
+
+Problem 2
+```{r}
+logGMReturn =log(GM_AC[-1] / GM_AC[-n])
+par(mfrow = c(1, 1))
+plot(GMReturn,logGMReturn)
+print(cor(GMReturn,logGMReturn))
+```
+There GMReturn and logGMReturns has a pearsons correlation cofficient of more than 0.9995408(~1) which suggests that there is a very strong positive correlation between returns of GM  and log returns 
+
+Problem 3
+```{r}
+library("quantmod")
+getSymbols('MSFT',from = '2008-08-01',to ='2018-09-5')
+getSymbols('MRK',from = '2008-08-01',to ='2018-09-5')
+plot(cbind(Ad(MSFT),Ad(MRK)), legend.loc = "topleft")
+MRK.daily=dailyReturn(MRK)
+MSFT.daily=dailyReturn(MSFT)
+plot(as.vector(MRK.daily),as.vector(MSFT.daily))
+```
+The scatter plot suggests that there is a positive correlation between daily returns of Microsoft and Merck. The higher than average returns of Merck occur with higher than average returns of Microsoft.There are returns which differ significantly from the average returns for both Microsoft and Merck and these returns occur together.
+
+```{r}
+MRK.daily.log=log(MRK.daily+1)
+MSFT.daily.log=log(MSFT.daily+1)
+plot(as.vector(MRK.daily),as.vector(MRK.daily.log))
+print(cor(as.vector(MRK.daily),as.vector(MRK.daily.log)))
+plot(as.vector(MSFT.daily),as.vector(MSFT.daily.log))
+print(cor(as.vector(MSFT.daily),as.vector(MSFT.daily.log)))
+
+```
+
+The returns of both Merck and Microsoft have a very strong correlation with log rturns with the pearsons coeeficient value of ~1
+
+2.4.2
+Problem 4
+```{r}
+niter = 1e5 # number of iterations
+below = rep(0, niter) # set up storage
+set.seed(2009)
+for (i in 1:niter)
+{
+r = rnorm(45, mean = 0.05/253,
+sd = 0.23/sqrt(253)) # generate random numbers
+logPrice = log(1e6) + cumsum(r)
+minlogP = min(logPrice) # minimum price over next 45 days
+below[i] = as.numeric(minlogP < log(950000))
+ }
+ mean(below)
+```
+The mean(below) function provides the propertion of values in simulation where the minimum prices is lesser than 950000 i,e the probability that the minimum price is lesser than 950000 is ~0.50988.
+
+2.4.3
+
+Problem 9
+```{r}
+ set.seed(2012)
+ n = 253
+par(mfrow=c(3,3))
+for (i in (1:9))
+{
+logr = rnorm(n, 0.05 / 253, 0.2 / sqrt(253))
+price = c(120, 120 * exp(cumsum(logr)))
+plot(price, type = "b")
+}
+```
+The  mean and standard for 1 year log return can be calculated based on the assumed mean and standard deviation for one day and assuming that the number of days stock is traded is 253 days.
+mean for logreturns in years- 0.05
+standard deviation for log return for one year SD(Y)=0.2
+
+Problem 10
+The price series in the given sample appear to have momentum in the short term .Increase in stock price is accompanied by an increase in stock price for a short run . This momentum does not continue over the long run . This appearance of momentum is an illusion since the rnorm function is designed to generate random number which are independent of each other and therefore have a correlation coefficient which is 0. Also from the first graph we can see that an initial increase price does not that there will be a continual increase in price. There is reversal in the direction of price change
+
+Problem 11
+The c(120, 120 * exp(cumsum(logr))) is used to obtain a vector of asset prices over 253 days.The term exp(cumsum(logr)) gives a vector of ratio of price in the current period(2-253 days) and initial period .Multiplying with the price of asset in the first period we obtain the vector of prices from 2-253 days
+
+
+2.4.4
+```{r}
+getSymbols('MCD',from = '2010-01-01',to ='2014-09-06')
+MCD.daily=dailyReturn(MCD)
+MCD.daily.log=log(MCD.daily+1)
+plot(as.vector(MCD.daily),as.vector(MCD.daily.log))
+print(cor(as.vector(MCD.daily),as.vector(MCD.daily.log)))
+print(head(MCD.daily))
+print(as.vector(MCD.daily.log)[1:6])
+
+```
+Problem 12
+The line is almost 45 degrees from both the axis and the axis have the same scale. Therefore the returns and log returns for MCD are approximately the same.This can also be seen from the printed values of returns and log returns
+
+```{r}
+mean(MCD.daily)
+mean(MCD.daily.log)
+sd(MCD.daily)
+sd(MCD.daily.log)
+```
+Problem 13
+
+The mean of daily retuns and log returns have a very small diffrence. The standard deviation have an even smaller diffrence and can be considered equal.It is reasonable to consider that the mean and standard deviation are the same log return and log normal retuns.
+
+Problem 14
+
+Paired t test is used to compare the means of return and log return 
+```{r}
+t.test(as.vector(MCD.daily),as.vector(MCD.daily.log),paired = TRUE)
+```
+p value of lesser than 0.05 is obtained.Therefore  we reject the current hypothesis that the mean diffrence between the paired diffrence is signifcantly diffrent from 0.
+
+There are two assumption made while considering the paired t tests
+- the diffrence of the means follow a normal distribution
+-the diffrence are independent of each other
+
+
+The diffrence of mean need not follow a normal distribution. The diffrence may not be independent of each other since the return values of may have correlation.The results of the t -test might not hold
+
+Problem 15
+
+Although the paired t-tests suggests that there is a significant diffrence between the mean. The tests migh not hold. Therfore it is reasonable to interchange the values between returns and log returns for very sm all values.
+
+Problem 16
+```{r}
+set.seed(2015)
+n = 20
+below=rep(0,10000)
+for (i in (1:10000))
+{
+r = rnorm(n, mean(MCD.daily.log), sd(MCD.daily.log))
+prices=93.07*exp(cumsum(r))
+minP = min(prices) # minimum price over next 45 days
+below[i] = as.numeric(minP < 85)
+}
+mean(below)
+expectedvalue=(100*mean(below))-(1-mean(below))
+print(expectedvalue)
+```
+Since the expectedvalue is positive he should make the bet
+
+Problem 17
+```{r}
+set.seed(2015)
+n = 20
+below=rep(0,10000)
+for (i in (1:10000))
+{
+r = rnorm(n, mean(MCD.daily.log), sd(MCD.daily.log))
+prices=93.07*exp(cumsum(r))
+minP = min(prices) # minimum price over next 45 days
+below[i] = as.numeric(minP < 84.50)
+}
+mean(below)
+expectedvalue=(125*mean(below))-(1-mean(below))
+print(expectedvalue)
+
+```
+The expectedvalue is still slightly positive so he should be ready to make the bet
+
+3.10.1
+
+Problem 1
+```{r}
+bondvalue = function(c, T, r, par)
+{
+# Computes bv = bond values (current prices) corresponding
+# to all values of yield to maturity in the
+# input vector r
+#
+# INPUT
+# c = coupon payment (semiannual)
+# T = time to maturity (in years)
+# r = vector of yields to maturity (semiannual rates)
+# par = par value
+#
+bv = c / r + (par - c / r) * (1 + r)^(-2 * T)
+bv
+}
+price = 1200 # current price of the bond
+C = 40 # coupon payment
+T= 30 # time to maturity
+par = 1000 # par value of the bond
+r = seq(0.02, 0.05, length = 300)
+value = bondvalue(C, T, r, par)
+yield2M = spline(value, r, xout = price) # spline interpolation
+plot(r, value, xlab = "yield to maturity", ylab = "price of bond",
+type = "l", main = "par = 1000, coupon payment = 40,T = 30", lwd = 2)
+abline(h = 1200)
+abline(v = yield2M)
+```
+The yield to maturity is ~0.325
+
+```{r}
+print(yield2M)
+```
+The estimate is approximately equal to the value obtained from spline interpolation.
+
+Problem 2
+
+The uniroot(function(r) r^2 - 0.5, c(0.7, 0.8)) finds the root of r^2 - 0.5 between 0.7 and 0.8
+
+Problem 3
+```{r}
+bondvalue = function(c, T, r, par)
+{
+# Computes bv = bond values (current prices) corresponding
+# to all values of yield to maturity in the
+# input vector r
+#
+# INPUT
+# c = coupon payment (semiannual)
+# T = time to maturity (in years)
+# r = vector of yields to maturity (semiannual rates)
+# par = par value
+#
+bv = c / r + (par - c / r) * (1 + r)^(-2 * T)
+bv
+}
+price = 1200 # current price of the bond
+C = 40 # coupon payment
+T= 30 # time to maturity
+par = 1000 # par value of the bond
+r = seq(0.02, 0.05, length = 300)
+value = bondvalue(C, T, r, par)
+yield2M=uniroot(function(r)bondvalue(C, T, r, par)-1200,c(0.02,0.05))
+print(yield2M)
+
+```
+The yield2m for price of 1200 is  0.03238059
+
+Problem 4
+```{r}
+price = 9800 # current price of the bond
+C = 280 # coupon payment
+T= 8 # time to maturity
+par = 10000 # par value of the bond
+value = bondvalue(C, T, r, par)
+yield2M=uniroot(function(r)bondvalue(C, T, r, par)-9800,c(0.02,0.05))
+print(yield2M)
+r = seq(0.02, 0.05, length = 300)
+plot(r, value, xlab = "yield to maturity", ylab = "price of bond",
+type = "l", main = "par = 1000, coupon payment = 40,T = 30", lwd = 2)
+abline(h = 9800)
+abline(v = yield2M)
+```
+The yeild to maturity obtained is 0.02985708
+
+Problem 5
+```{r}
+price = 1050 # current price of the bond
+C = 35 # coupon payment
+T= 20 # time to maturity
+par = 1000 # par value of the bond
+yield2M=uniroot(function(r)bondvalue(C, T, r, par)-1050,c(0.02,0.05))
+print(yield2M)
+
+```
+
+The yeild to maturity obtained is 0.03275297
+
+
+Problem 6
+```{r}
+price = 950.10 # current price of the bond
+C = 35 # coupon payment
+T= 5 # time to maturity
+par = 1000 # par value of the bond
+couppay=uniroot(function(c)bondvalue(c, T, 0.035, par)-950.10,c(0,2000))
+print(couppay)
+
+```
+
+The coupon payment is 28.99996
+
+3.11
+
+Q13 0.8105
+
+Q22

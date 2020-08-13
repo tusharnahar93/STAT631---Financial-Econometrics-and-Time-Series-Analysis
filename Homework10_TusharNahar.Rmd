@@ -1,0 +1,185 @@
+---
+title: "Assignment10_TusharNahar"
+author: "Tushar  Nahar"
+date: "November 9, 2018"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r}
+options(warn=-1)
+```
+
+Question 1
+
+```{r}
+library('rugarch')
+source("C:/Users/tusha/Documents/H12_RFunctions.R")
+library("quantmod")
+getSymbols("AMZ")
+Yt=dailyReturn(Ad(AMZ), type = "log")
+Yfore=Yt["2016-11-01::"]
+nfore=dim(Yfore)[1]
+n=dim(Yt)[1]-nfore
+n
+Yn=Yt[1:n]
+dt=fitdist("std", Yn)
+dst=fitdist("sstd", Yn)
+dnor=fitdist("norm", Yn)
+dsnor=fitdist("snorm", Yn)
+dge=fitdist("ged", Yn)
+dsge=fitdist("sged", Yn)
+dni=fitdist("nig", Yn)
+djs=fitdist("jsu", Yn)
+rbind(std = c(loglik = -tail(dt$val,1), aic = 2*tail(dt$val,1)
++ 2*length(dt$par),bic = 2*tail(dt$val,1) + log(n)*length(dt$par)),
+sstd = c(loglik = -tail(dst$val,1), aic = 2*tail(dst$val,1)
++ 2*length(dst$par),bic = 2*tail(dst$val,1) + log(n)*length(dst$par)),
+norm=c(loglik = -tail(dnor$val,1), aic = 2*tail(dnor$val,1)
++ 2*length(dnor$par),bic = 2*tail(dnor$val,1) + log(n)*length(dnor$par)),
+snorm=c(loglik = -tail(dsnor$val,1), aic = 2*tail(dsnor$val,1)
++ 2*length(dsnor$par),bic = 2*tail(dsnor$val,1) + log(n)*length(dsnor$par)),
+ged=c(loglik = -tail(dge$val,1), aic = 2*tail(dge$val,1)
++ 2*length(dge$par),bic = 2*tail(dge$val,1) + log(n)*length(dge$par)),
+sged=c(loglik = -tail(dsge$val,1), aic = 2*tail(dsge$val,1)
++ 2*length(dsge$par),bic = 2*tail(dsge$val,1) + log(n)*length(dsge$par)),
+nig=c(loglik = -tail(dni$val,1), aic = 2*tail(dni$val,1)
++ 2*length(dni$par),bic = 2*tail(dni$val,1) + log(n)*length(dni$par)),
+jsu=c(loglik = -tail(djs$val,1), aic = 2*tail(djs$val,1)
++ 2*length(djs$par),bic = 2*tail(djs$val,1) + log(n)*length(djs$par)))
+
+```
+
+Both the AIC nd BIC suggest that the standard t distribution is the best fit among all the distributions.From the AIC and BIC values we can see that normal distribution is a poor fit , while the fat tailed distributions have a much better fit to the data.This fat tail can be a combination of marginal distribution and GARCH type dependency in the data. A symmetric standard tdistribution  
+```{r}
+qqnorm(Yn)
+qqline(Yn)
+acf(Yn)
+acf(Yn,"partial")
+```
+The acf and pacf plot show a non zero serial correlation . The ACF and PACF plot suggests that the given data might have an Moving Average(GARCH) model since acf cuts after lag p and pacf tails off.The plots suggests a p and q value off lesser thank 3.
+
+Question 2
+
+We fit the model for diffrent values of p and q and obtain matrix of dimension p * q .We then fit the ARIMA model and calculate the AIC and BIC(using no of paramters, onservation used for fitting)
+```{r}
+i=4
+aic=matrix(nrow = i,ncol = i)
+bic=matrix(nrow = i,ncol = i)
+dimnames(aic)[[1]] = as.character(0:(i-1))
+dimnames(aic)[[2]] = as.character(0:(i-1))
+dimnames(bic)[[1]] = as.character(0:(i-1))
+dimnames(bic)[[2]] = as.character(0:(i-1))
+for(a in 0:(i-1)){
+    for(b in 0:(i-1)){
+        arma.fit = arima(Yn, order = c(a,0,b), include.mean = FALSE)
+        aic[a+1,b+1] = arma.fit$aic
+        bic[a+1,b+1] = -2*arma.fit$loglik + log(n)*(length(arma.fit$coef) + 1)
+                      }
+                  }
+aic
+```
+AIC suggests an MA(1) model
+```{r}
+bic
+```
+BIC also suggests an MA(1) model
+
+
+```{r}
+fit.t.aic = autoarfima(Yn, criterion = "AIC", method = "full",include.mean = F, distribution.model = "std")
+fit.t.aic
+```
+```{r}
+fit.t.bic = autoarfima(Yn, criterion = "BIC", method = "full",include.mean = F, distribution.model = "std")
+fit.t.bic
+```
+The model from the autoarfima gives the same output.
+
+
+Question 3
+We pass the arma model obtained based on the lowest aic and bic value.For the current model it is an MA(1) process.We choose the three marginal distribution  the best fit t,skewed t and jsu.We also choose between sGarch and Egarch for the variance model since EGARCH generally gives the best solution
+```{r}
+
+ic.fun(Yn,arma = c(0,1),var.model = c("sGARCH","eGARCH"),dist = c("std","sstd","jsu"))
+```
+From both aic,bic for each GARCH type we select EGARCH(2,2) model.
+
+We then fit the create a specifcation using ugarchspec and pass it to ugarchfit
+```{r}
+uspec=ugarchspec(variance.model =list(model="eGARCH",garchOrder=c(2,2)),mean.model =list(armaOrder =c(0,1),include.mean=F),distribution.model = "std")
+
+fit.best=ugarchfit(Yt,spec = uspec ,out.sample = nfore)
+showShort(fit.best)
+fore.best=ugarchforecast(fit.best,n.roll = nfore-1)
+fit.best
+```
+High p -value in both the Ljun Box tests and LM suggests that the serial correlation between the residual is zero at 95 percent confidence interval.High beta values suggest that the past volatilities are very persistent
+
+Question 4
+
+We choose the garchorder from the results of ic.fun to fit t the standard Garch model.Fit the standard Garch model to the whole data  and obtain the best fit model.We specify the sample data. We obtain a forecast for this fit.We use the rate function to obtain the coverage rate of the model
+```{r}
+spec.s = ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,1)),mean.model = list(armaOrder = c(0,1), include.mean = F),distribution.model = "std")
+fit.s=ugarchfit(Yt,spec = spec.s,out.sample = nfore)
+fore.s=ugarchforecast(fit.s,n.roll = nfore-1)
+rate(fore.s)
+```
+We fit the white noise arima model and pass the arma order of0,1 obtained from fitting the arma model. We specify the white noise to have a standard t distribution
+```{r}
+spec = arfimaspec(mean.model = list(armaOrder = c(0, 1), include.mean = F),
+distribution.model = "std")
+fit.0 = arfimafit(data = Yt, spec = spec, out.sample = nfore)
+fore.0 = arfimaforecast(fit.0, n.roll = nfore-1)
+cat("The MA(1) + i.i.d White Noise:\n");rate0(fore.0)
+```
+For the iid whitenoise the coverage rate is much greater than nominal rate because the predicted interval are much greater than Egarch in most cases. 
+
+We apply the fitted and sigma function to obtain the one step ahead forecast.We obtain the critical value of std since it is the chosen distribution for white noise.For iid white noise we choose the gaussian distribution.
+
+```{r}
+Ynh = Yt["2016-11-01::"] ## Obs starting from 2016-11-01
+cri = qdist("std",p = .975, shape = coef(fit.s)["shape"])
+
+hi.s = fitted(fore.s)["T+1",] + cri*sigma(fore.s)["T+1",] 
+lo.s = fitted(fore.s)["T+1",] - cri*sigma(fore.s)["T+1",] 
+
+hi.0 = fitted(fore.0)["T+1",] + qnorm(0.975)*sd(Yt[1:n,]) 
+lo.0 = fitted(fore.0)["T+1",] + qnorm(0.025)*sd(Yt[1:n,]) 
+cat("PI for sGARCH:(",hi.s[1],",",lo.s[1],")")# for a single observation ,output,sGARCH
+cat("PI for iid whitenoise:(",hi.0[1],",",lo.0[1],")")# for a single observation ,output,iid
+```
+
+```{r}
+plot(fit.best, which =1)
+```
+Question 5
+We obtain Y and sigma value on the current day .We choose the T+1 forecast out of all the values. We calculate quantile from predicted value of Y and Sigma using standard t distribution and we obtain 
+```{r}
+coef = coef(fit.best)
+pred = cbind(ret = fitted(fore.best)[,"2016-10-31"],
+sig = sigma(fore.best)[,"2016-10-31"])
+alpha = 0.05; S = 10000
+mu.1 = pred["T+1","ret"]; sig.1 = pred["T+1","sig"]
+q = qdist("std", p = 0.05, mu = mu.1, sigma = sig.1,
+skew = coef["skew"], shape = coef["shape"])
+cat("\nOne day VaR:\t", -S*q)
+```
+we find the m step ahead forecast for Y and Sigma .Y=sum of forecast of y before the m th forecast,
+for sigma, this squareroot of the sum of the predicted values upto m
+```{r}
+m = 2; mu.m = sum(pred[1:m, "ret"])
+sig.m = sqrt(sum(pred[1:m, "sig"]^2))
+q = qdist("std", p = 0.05, mu = mu.m, sigma = sig.m,
+skew = coef["skew"], shape = coef["shape"])
+cat("\nTwo day VaR:\t", -S*q)
+```
+
