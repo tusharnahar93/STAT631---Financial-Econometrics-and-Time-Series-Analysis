@@ -11,9 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## R Markdown
-2.4.1
 
-Problem 1
+Stock_FX_Bond.CSV contains daily and adjusted closing price of stocks and the S&P 500 and yields on bond from 2nd Jan 1987 to 1 Sep 2006.The following code loads the data , calculates from the CSV files and calculates the returns for General Motors and Ford 
 ```{r}
 dat=read.csv("Stock_FX_Bond.csv", header = TRUE)
 attach(dat)
@@ -25,7 +24,7 @@ plot(GMReturn,FReturn)
 ```
 The scatterplots suggest that there us a positive correlation between  GM and Ford returns. Higer values of GM return occur with Higher values of Ford returns.There are a number of outlying points whose return values differ signifcantly from the mean values.Outlying GM return seem to occur with outlying ford returns.
 
-Problem 2
+In the following lines of code we calculate the log returns for GM and plot the returns versus the log returns.We then plot two types of returns.
 ```{r}
 logGMReturn =log(GM_AC[-1] / GM_AC[-n])
 par(mfrow = c(1, 1))
@@ -34,7 +33,7 @@ print(cor(GMReturn,logGMReturn))
 ```
 There GMReturn and logGMReturns has a pearsons correlation cofficient of more than 0.9995408(~1) which suggests that there is a very strong positive correlation between returns of GM  and log returns 
 
-Problem 3
+In the following lines of code we obtain the adjusted returns for Microsoft and Merck using the quantmod package and we plot these returns 
 ```{r}
 library("quantmod")
 getSymbols('MSFT',from = '2008-08-01',to ='2018-09-5')
