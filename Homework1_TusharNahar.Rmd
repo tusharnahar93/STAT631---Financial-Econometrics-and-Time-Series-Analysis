@@ -57,8 +57,9 @@ print(cor(as.vector(MSFT.daily),as.vector(MSFT.daily.log)))
 
 The returns of both Merck and Microsoft have a very strong correlation with log rturns with the pearsons coeeficient value of ~1
 
-2.4.2
-Problem 4
+We next consider a situation where a hedge fund has invested $50000 dollars and  has a leverage of 20:1. Assuming stock prices have a normal distribution with a yearly mean of 0.05 and a standard deviation of 0.23, We carry out a monte carlo simulation to obtain a sample probability that the minimum stock price would go below the borrowed amount.
+
+
 ```{r}
 niter = 1e5 # number of iterations
 below = rep(0, niter) # set up storage
@@ -75,9 +76,11 @@ below[i] = as.numeric(minlogP < log(950000))
 ```
 The mean(below) function provides the propertion of values in simulation where the minimum prices is lesser than 950000 i,e the probability that the minimum price is lesser than 950000 is ~0.50988.
 
-2.4.3
+In the following section  we use simulation to see how stock prices evolve when the log returns  are iid normal, which implies that the price series is a geometric random walk.
 
-Problem 9
+There are 253 days in a year so the simulation is carried over one year
+
+
 ```{r}
  set.seed(2012)
  n = 253
@@ -89,18 +92,12 @@ price = c(120, 120 * exp(cumsum(logr)))
 plot(price, type = "b")
 }
 ```
-The  mean and standard for 1 year log return can be calculated based on the assumed mean and standard deviation for one day and assuming that the number of days stock is traded is 253 days.
-mean for logreturns in years- 0.05
-standard deviation for log return for one year SD(Y)=0.2
 
-Problem 10
 The price series in the given sample appear to have momentum in the short term .Increase in stock price is accompanied by an increase in stock price for a short run . This momentum does not continue over the long run . This appearance of momentum is an illusion since the rnorm function is designed to generate random number which are independent of each other and therefore have a correlation coefficient which is 0. Also from the first graph we can see that an initial increase price does not that there will be a continual increase in price. There is reversal in the direction of price change
 
-Problem 11
-The c(120, 120 * exp(cumsum(logr))) is used to obtain a vector of asset prices over 253 days.The term exp(cumsum(logr)) gives a vector of ratio of price in the current period(2-253 days) and initial period .Multiplying with the price of asset in the first period we obtain the vector of prices from 2-253 days
 
 
-2.4.4
+In the following section we calculate the returns and logreturns  of McDonalds from 2010-01-01 to 2014-09-06
 ```{r}
 getSymbols('MCD',from = '2010-01-01',to ='2014-09-06')
 MCD.daily=dailyReturn(MCD)
@@ -111,7 +108,7 @@ print(head(MCD.daily))
 print(as.vector(MCD.daily.log)[1:6])
 
 ```
-Problem 12
+
 The line is almost 45 degrees from both the axis and the axis have the same scale. Therefore the returns and log returns for MCD are approximately the same.This can also be seen from the printed values of returns and log returns
 
 ```{r}
@@ -120,11 +117,9 @@ mean(MCD.daily.log)
 sd(MCD.daily)
 sd(MCD.daily.log)
 ```
-Problem 13
 
 The mean of daily retuns and log returns have a very small diffrence. The standard deviation have an even smaller diffrence and can be considered equal.It is reasonable to consider that the mean and standard deviation are the same log return and log normal retuns.
 
-Problem 14
 
 Paired t test is used to compare the means of return and log return 
 ```{r}
@@ -133,17 +128,17 @@ t.test(as.vector(MCD.daily),as.vector(MCD.daily.log),paired = TRUE)
 p value of lesser than 0.05 is obtained.Therefore  we reject the current hypothesis that the mean diffrence between the paired diffrence is signifcantly diffrent from 0.
 
 There are two assumption made while considering the paired t tests
-- the diffrence of the means follow a normal distribution
+-the diffrence of the means follow a normal distribution
 -the diffrence are independent of each other
 
 
 The diffrence of mean need not follow a normal distribution. The diffrence may not be independent of each other since the return values of may have correlation.The results of the t -test might not hold
 
-Problem 15
 
 Although the paired t-tests suggests that there is a significant diffrence between the mean. The tests migh not hold. Therfore it is reasonable to interchange the values between returns and log returns for very sm all values.
 
-Problem 16
+We next consider run a monte carlo simulation model assuming the distribution of MCD log returns is normal to estimate the risk that the minimum price of mcdonalds is below $85
+considering the starting price is $93.07 dollars
 ```{r}
 set.seed(2015)
 n = 20
@@ -156,33 +151,12 @@ minP = min(prices) # minimum price over next 45 days
 below[i] = as.numeric(minP < 85)
 }
 mean(below)
-expectedvalue=(100*mean(below))-(1-mean(below))
-print(expectedvalue)
-```
-Since the expectedvalue is positive he should make the bet
-
-Problem 17
-```{r}
-set.seed(2015)
-n = 20
-below=rep(0,10000)
-for (i in (1:10000))
-{
-r = rnorm(n, mean(MCD.daily.log), sd(MCD.daily.log))
-prices=93.07*exp(cumsum(r))
-minP = min(prices) # minimum price over next 45 days
-below[i] = as.numeric(minP < 84.50)
-}
-mean(below)
-expectedvalue=(125*mean(below))-(1-mean(below))
-print(expectedvalue)
 
 ```
-The expectedvalue is still slightly positive so he should be ready to make the bet
+Computing yield to maturity
 
-3.10.1
+The following R function computes the price of a bond given coupon payments,maturity yield to maturity and par value
 
-Problem 1
 ```{r}
 bondvalue = function(c, T, r, par)
 {
